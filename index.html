@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+
+<link rel="manifest" href="manifest.json">
+
+<script>
+if ("serviceWorker" in navigator) {
+ navigator.serviceWorker.register("./service-worker.js");
+}
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>القرآن الكريم — حفص</title>
+<style>
+body{
+ margin:0;
+ background:#0b1220;
+ color:#fff;
+ font-family:system-ui;
+ transition:.4s;
+}
+
+/* وضع فاتح */
+body.light{
+ background:#f5f7fb;
+ color:#111;
+}
+body.light header{background:#e5e7eb;color:#111}
+body.light .ayah-box{background:#fff}
+body.light .search input{background:#fff;color:#111}
+body.light .drawer{background:#f1f5f9}
+
+/* HEADER */
+header{
+ background:#0f172a;
+ padding:8px;
+ text-align:center;
+ font-weight:bold;
+ font-size:14px;
+}
+
+/* SEARCH */
+.search{text-align:center;padding:6px;}
+.search input{
+ width:80%;
+ padding:7px;
+ border-radius:12px;
+ border:none;
+ background:#020617;
+ color:#fff;
+ font-size:13px;
+}
+
+/* AYAH */
+.ayah-box{
+ margin:6px;
+ padding:8px;
+ border-radius:12px;
+ background:#111827;
+ text-align:center;
+ font-size:14px;
+}
+
+/* VIEWER */
+.viewer{
+ display:flex;
+ justify-content:center;
+ padding:12px;
+ max-height:70vh;
+ background:#fff; /* حل مشكلة الشاشات الباهتة */
+ border-radius:18px;
+}
+.viewer.fit img{width:100%;}
+
+/* الصورة */
+img{
+ max-width:100%;
+ border-radius:14px;
+ background:#fff;
+ transition:.4s;
+ filter:none; /* إزالة الفلاتر */
+}
+
+/* SIDE ARROWS */
+.side{
+ position:fixed;
+ top:50%;
+ transform:translateY(-50%);
+ background:linear-gradient(145deg,#e5e7eb,#9ca3af);
+ color:#111;
+ border:none;
+ padding:6px 7px;
+ border-radius:50%;
+ font-size:11px;
+ box-shadow:0 0 8px rgba(255,255,255,.6);
+ z-index:5;
+}
+.left{left:5px;}
+.right{right:5px;}
+
+/* NAV */
+.nav{
+ display:flex;
+ gap:6px;
+ padding:6px;
+}
+.nav button{
+ flex:1;
+ padding:6px;
+ border:none;
+ border-radius:12px;
+ font-size:12px;
+ background:linear-gradient(145deg,#e5e7eb,#9ca3af);
+ color:#111;
+ box-shadow:0 0 6px rgba(255,255,255,.5);
+ animation:pulse 5s infinite;
+}
+
+/* تأثير هادئ */
+@keyframes pulse{
+ 0%{filter:hue-rotate(0deg)}
+ 50%{filter:hue-rotate(30deg)}
+ 100%{filter:hue-rotate(0deg)}
+}
+
+/* DRAWER */
+.drawer{
+ position:fixed;
+ top:0;
+ right:-200px;
+ width:190px;
+ height:100%;
+ background:#020617;
+ transition:.3s;
+ padding:8px;
+ overflow:auto;
+ z-index:10;
+}
+.drawer.open{right:0;}
+
+.page-row{
+ display:flex;
+ gap:4px;
+ margin-bottom:4px;
+}
+.page-row button{
+ padding:5px;
+ border:none;
+ border-radius:8px;
+ background:#1f2933;
+ color:#fff;
+ font-size:11px;
+}
+
+/* TOAST */
+.toast{
+ position:fixed;
+ bottom:20px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#111827;
+ padding:10px 14px;
+ border-radius:12px;
+ display:none;
+ font-size:13px;
+}
+
+/* إضاءة النص (نسخة احترافية لكل الشاشات) */
+.ayah-box{
+ animation:textGlow 6s infinite alternate;
+}
+
+/* إطار المصحف */
+img{
+ animation:frameGlow 12s infinite alternate;
+}
+
+/* تأثير النص – حقيقي */
+@keyframes textGlow{
+ 0%{
+  background:linear-gradient(to right,#fff7cc,#fff,#ffe9a6);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 4px #ffd700);
+ }
+ 50%{
+  background:linear-gradient(to right,#e0ffff,#fff,#ccffff);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 6px #00ffff);
+ }
+ 100%{
+  background:linear-gradient(to right,#fff7cc,#fff,#ffe9a6);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 4px #ffd700);
+ }
+}
+
+/* تأثير الإطار */
+@keyframes frameGlow{
+ 0%{filter:hue-rotate(0deg)}
+ 50%{filter:hue-rotate(40deg)}
+ 100%{filter:hue-rotate(0deg)}
+}
+
+/* وضع ملء الشاشة */
+.full header,
+.full .search,
+.full .ayah-box,
+.full .nav{
+ display:none !important;
+}
+
+.full .viewer{
+ max-height:100vh;
+ width:100vw;
+ padding:0;
+ background:#000;
+}
+
+.full img{
+ max-height:100vh;
+ width:auto;
+ animation:frameGlow 8s infinite alternate;
+}
+
+/* تحسين الوضع الفاتح */
+body.light .viewer{
+ background:#fff;
+}
+body.light img{
+ filter:none;
+}
+
+/* دعم الأجهزة الضعيفة */
+@media (max-device-width:480px){
+ .ayah-box{
+  filter:drop-shadow(0 0 4px #fff)
+         drop-shadow(0 0 8px #ffd700);
+ }
+}
+
+/* نسخة احتياط للنص */
+.glow-text{
+ color:#fff;
+ background:linear-gradient(to right,#fff7cc,#fff,#ffe9a6);
+ -webkit-background-clip:text;
+ -webkit-text-fill-color:transparent;
+ filter: drop-shadow(0 0 4px #ffd700)
+         drop-shadow(0 0 8px #ffecb5);
+}
+ /* تعزيز القراءة للأجهزة الضعيفة */
+@media (max-device-width:480px){
+
+ .viewer img{
+  filter:
+   brightness(1.35)
+   contrast(1.45)
+   saturate(1.25)
+   drop-shadow(0 0 1px #fff)
+   drop-shadow(0 0 2px #fff)
+   drop-shadow(0 0 4px #ffd700);
+ }
+
+}
+
+/* وضع تعزيز يدوي لو حبيت */
+.enhance img{
+ filter:
+  brightness(1.4)
+  contrast(1.5)
+  saturate(1.3)
+  drop-shadow(0 0 1px #fff)
+  drop-shadow(0 0 3px #ffd700)
+  drop-shadow(0 0 6px #ffea8a);
+}
+ 
+</style>
+ 
+</head>
+
+<body>
+ 
+<div id="consentBox" style="
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,.85);
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:9999;
+">
+
+<div style="
+background:#111827;
+padding:20px;
+border-radius:16px;
+max-width:90%;
+text-align:center;
+color:white;
+font-size:14px;
+">
+
+<b>🌙 أهلاً بك في تطبيق القرآن الكريم</b><br><br>
+
+نسأل الله لك التوفيق والبركة 🤍  
+هذا التطبيق لا يجمع أي بيانات شخصية إطلاقاً.
+
+سيتم استخدام الإشعارات فقط لتذكيرك
+بورِد القرآن في الوقت الذي تحدده أنت.
+
+<br><br>
+هل تسمح بتفعيل إشعارات المنبه؟
+
+<br><br>
+
+<button onclick="acceptConsent()"
+style="padding:10px 16px;border:none;border-radius:12px;
+background:#22c55e;color:white;font-size:13px">
+موافق 🤍
+</button>
+
+<button onclick="رفض()"
+style="padding:10px 16px;border:none;border-radius:12px;
+background:#ef4444;color:white;font-size:13px;margin-right:6px">
+رفض
+</button>
+
+<br><br>
+<small>
+سياسة الخصوصية:  
+لا يتم جمع أو تخزين أي بيانات.
+كل شيء محفوظ محلياً على جهازك فقط.
+</small>
+
+</div>
+</div>
+ 
+<header>القرآن الكريم — حفص</header>
+
+<div class="search">
+ <input id="search" placeholder="رقم الصفحة">
+</div>
+ 
+<div class="ayah-box glow-text" id="ayah"></div>
+ 
+<div class="viewer" id="viewer">
+ <img id="img">
+</div>
+
+<!-- الأسهم -->
+<button class="side left" onclick="prev()">❮</button>
+<button class="side right" onclick="next()">❯</button>
+
+<div class="nav">
+ <button onclick="toggleDrawer()">☰</button>
+ <button onclick="toggleFull()">⤢</button>
+ <button onclick="toggleMode()">◐</button>
+</div>
+
+<div class="nav">
+ <input type="time" id="alarm" style="flex:1;padding:6px;border-radius:10px;border:none;font-size:12px">
+ <button onclick="setAlarm()">⏰</button>
+</div>
+
+<div class="drawer" id="drawer"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ملف الصوت من الجذر -->
+<audio id="ring" src="alarm.mp3"></audio>
+
+<script>
+ /* طلب إذن الإشعارات */
+if ("Notification" in window) {
+ if (Notification.permission !== "granted") {
+  Notification.requestPermission();
+ }
+}
+
+/* إشعار خارجي */
+function notifyExternal(){
+
+ if(localStorage.consent!=="yes") return;
+
+ if("Notification" in window &&
+    Notification.permission==="granted"){
+
+  new Notification("تذكير القرآن",{
+   body:"حان وقت التلاوة 🌙",
+   icon:"quran-512.png"
+  });
+
+  /* اهتزاز */
+  if(navigator.vibrate){
+   navigator.vibrate([300,150,300,150,500]);
+  }
+ }
+}
+ 
+ 
+const TOTAL=604;
+let page=parseInt(localStorage.page||1);
+let full=false;
+let fit=false;
+let sx;
+
+const img=document.getElementById("img");
+const viewer=document.getElementById("viewer");
+const drawer=document.getElementById("drawer");
+const ring=document.getElementById("ring");
+const toast=document.getElementById("toast");
+
+/* LOAD */
+function load(){
+ img.src=page+".png";
+ localStorage.page=page;
+}
+load();
+
+/* تنقل */
+function prev(){if(page>1){page--;load();}}
+function next(){if(page<TOTAL){page++;load();}}
+
+/* الوضع الليلي */
+if(localStorage.mode=="light")
+ document.body.classList.add("light");
+
+function toggleMode(){
+ document.body.classList.toggle("light");
+ localStorage.mode=
+ document.body.classList.contains("light")?"light":"dark";
+}
+
+/* درج الفهرس */
+function toggleDrawer(){
+ drawer.classList.toggle("open");
+}
+
+/* إنشاء الفهرس */
+for(let i=1;i<=TOTAL;i++){
+ let row=document.createElement("div");
+ row.className="page-row";
+
+ let b=document.createElement("button");
+ b.textContent=i;
+ b.style.flex="1";
+ b.onclick=()=>{page=i;load();drawer.classList.remove("open");};
+
+ let s=document.createElement("button");
+ s.textContent="★";
+ s.style.width="26px";
+ s.onclick=()=>{
+  localStorage["fav"+i]=true;
+  showToast("تم حفظ "+i);
+ };
+
+ row.append(b,s);
+ drawer.appendChild(row);
+}
+
+/* البحث */
+search.onchange=()=>{
+ let n=parseInt(search.value);
+ if(n>=1 && n<=TOTAL){page=n;load();}
+};
+
+/* السحب */
+img.addEventListener("touchstart",e=>{
+ sx=e.touches[0].clientX;
+});
+img.addEventListener("touchend",e=>{
+ let dx=e.changedTouches[0].clientX-sx;
+ if(dx>80) next();
+ if(dx<-80) prev();
+});
+
+/* النقر مرتين للتكبير */
+let lastTap = 0;
+let scale = 1;
+
+/* دالة ملء الشاشة */
+function toggleFullscreen(){
+ if(!document.fullscreenElement){
+  document.body.classList.add("full");
+  document.documentElement.requestFullscreen();
+ }else{
+  document.body.classList.remove("full");
+  document.exitFullscreen();
+ }
+}
+
+/* ماوس */
+img.addEventListener("dblclick",toggleFullscreen);
+
+/* لمس */
+img.addEventListener("touchend",e=>{
+ let now = Date.now();
+ if(now - lastTap < 300){
+  toggleFullscreen();
+ }
+ lastTap = now;
+});
+
+/* تكبير وتصغير باللمس داخل fullscreen */
+img.addEventListener("wheel",e=>{
+ if(!document.fullscreenElement) return;
+ e.preventDefault();
+ scale += e.deltaY * -0.001;
+ scale = Math.min(Math.max(.8,scale),3);
+ img.style.transform=`scale(${scale})`;
+});
+
+/* لمس بإصبعين (pinch zoom) */
+let startDist=0;
+
+img.addEventListener("touchstart",e=>{
+ if(e.touches.length==2){
+  startDist=Math.hypot(
+   e.touches[0].pageX-e.touches[1].pageX,
+   e.touches[0].pageY-e.touches[1].pageY
+  );
+ }
+});
+
+img.addEventListener("touchmove",e=>{
+ if(e.touches.length==2 && document.fullscreenElement){
+  let newDist=Math.hypot(
+   e.touches[0].pageX-e.touches[1].pageX,
+   e.touches[0].pageY-e.touches[1].pageY
+  );
+  scale*=newDist/startDist;
+  scale=Math.min(Math.max(.8,scale),3);
+  img.style.transform=`scale(${scale})`;
+  startDist=newDist;
+ }
+});
+  
+
+/* ملء الشاشة */
+function toggleFull(){
+ if(!full){
+  document.body.classList.add("full");
+  document.documentElement.requestFullscreen();
+  full=true;
+ }else{
+  document.body.classList.remove("full");
+  document.exitFullscreen();
+  full=false;
+ }
+}
+
+/* آيات */
+const ayat=[
+ "قُلْ إِنَّمَا أُمِرْتُ أَنْ أَعْبُدَ اللَّهَ",
+ "كُنْتُمْ خَيْرَ أُمَّةٍ",
+ "وَلَنَا أَعْمَالُنَا",
+ "إِنَّ مَعَ الْعُسْرِ يُسْرًا",
+ "وَقُلْ رَبِّ زِدْنِي عِلْمًا"
+];
+let ai=0;
+function rotate(){
+ ayah.textContent=ayat[ai%ayat.length];
+ ai++;
+}
+rotate();
+setInterval(rotate,15000);
+
+/* المنبه */
+function setAlarm(){
+ localStorage.alarm=alarm.value;
+ showToast("تم ضبط المنبه");
+}
+setInterval(()=>{
+ let t=localStorage.alarm;
+ if(!t)return;
+
+ let n=new Date();
+ let cur=n.getHours().toString().padStart(2,"0")+":"+n.getMinutes().toString().padStart(2,"0");
+
+ if(cur==t){
+ ring.play();          // تشغيل الصوت
+ notifyExternal();    // إشعار خارجي
+ showToast("📖 حان وقت التلاوة");
+ localStorage.alarm="";
+}
+},60000);
+
+/* تنبيه */
+function showToast(msg){
+ toast.textContent=msg;
+ toast.style.display="block";
+ setTimeout(()=>toast.style.display="none",3500);
+}
+ /* إظهار نافذة الموافقة أول مرة */
+if(!localStorage.consent){
+ document.getElementById("consentBox").style.display="flex";
+}else{
+ document.getElementById("consentBox").style.display="none";
+}
+
+/* قبول */
+function acceptConsent(){
+ localStorage.consent="yes";
+ document.getElementById("consentBox").style.display="none";
+
+ if("Notification" in window){
+  Notification.requestPermission();
+ }
+}
+
+/* رفض */
+function رفض(){
+ localStorage.consent="no";
+ document.getElementById("consentBox").style.display="none";
+}
+ 
+</script>
+
+</body>
+</html>
